@@ -9,7 +9,7 @@ $ javac graph.java
 
 Execute the program with the following code: 
 ```sh
- java graph network.txt 
+$ java graph network.txt 
 ```
 I have successfully compiled the code and executed in the following environment: 
     OS: Windows 8.1  Compiler: javac 1.8.0_40  
