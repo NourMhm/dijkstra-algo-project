@@ -1,0 +1,660 @@
+package project2;
+
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Comparator;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+import java.util.Map.Entry;
+import java.util.NoSuchElementException;
+import java.util.Queue;
+import java.util.Scanner;
+import java.util.StringTokenizer;
+
+
+class GraphException extends RuntimeException
+{
+    public GraphException( String name )
+    {
+        super( name );
+    }
+}
+
+class Vertex
+{
+    public String     name;   // Vertex name
+    public List<Edge> adj;    // Adjacent vertices
+    public Vertex     prev;   // Previous vertex on shortest path
+    public Double     dist;   // Distance of path
+    public String     status; // Status
+    
+    public Vertex( String nm )
+      { name = nm; adj = new LinkedList<Edge>( ); status = "UP"; reset( ); }
+
+    public void reset( )
+      { dist = (double) Graph.INFINITY; prev = null; }    
+      
+}
+
+class Edge
+{
+    public Vertex destName;
+    public double distance;
+    public Edge(Vertex w, double d)
+      { destName = w; distance = d; }
+}
+
+class Path
+{
+    public String str;
+    public double dist;
+
+    public Path(String s,Double d )
+    {
+    	str = s;
+    	dist = d;
+    }
+    
+}
+
+class MinHeap
+{
+    private Path[] Heap;
+    private int size;
+    private int maxsize;
+ 
+    private static final int FRONT = 1;
+ 
+    public MinHeap(int maxsize)
+    {
+        this.maxsize = maxsize;
+        this.size = 0;
+        Heap = new Path[this.maxsize + 1];
+        Heap[0] = new Path("null", (double) Integer.MIN_VALUE);
+    }
+ 
+    public int size()
+    {
+    	return size;
+    }
+    
+    private int parent(int pos)
+    {
+        return pos / 2;
+    }
+ 
+    private int leftChild(int pos)
+    {
+        return (2 * pos);
+    }
+ 
+    private int rightChild(int pos)
+    {
+        return (2 * pos) + 1;
+    }
+ 
+    private boolean isLeaf(int pos)
+    {
+        if (pos-1 >=  (size / 2)  &&  pos <= size)
+        { 
+            return true;
+        }
+        return false;
+    }
+ 
+    private void swap(int fpos, int spos)
+    {
+        Path tmp;
+        tmp = Heap[fpos];
+        Heap[fpos] = Heap[spos];
+        Heap[spos] = tmp;
+    }
+ 
+    private void minHeapify(int pos)
+    {
+        if (!isLeaf(pos) && this.size>0)
+        { 
+            if ( Heap[pos].dist > Heap[leftChild(pos)].dist  || Heap[pos].dist > Heap[rightChild(pos)].dist)
+            {
+                if (Heap[leftChild(pos)].dist < Heap[rightChild(pos)].dist)
+                {
+                    swap(pos, leftChild(pos));
+                    minHeapify(leftChild(pos));
+                }else
+                {
+                    swap(pos, rightChild(pos));
+                    minHeapify(rightChild(pos));
+                }
+            }
+        }
+    }
+ 
+    public void insert(Path element)
+    {
+        Heap[++size] = element;
+        int current = size;
+        System.out.println(current + " " + parent(current));
+        System.out.println(Heap[current].dist + " " + Heap[parent(current)].dist);
+        while (Heap[current].dist < Heap[parent(current)].dist)
+        {
+            swap(current,parent(current));
+            current = parent(current);
+        }	
+    }
+    
+    public void print()
+    {
+        for (int i = 1; i <= size / 2; i++ )
+        {
+            System.out.print(" PARENT : " + Heap[i] + " LEFT CHILD : " + Heap[2*i] 
+                + " RIGHT CHILD :" + Heap[2 * i  + 1]);
+            System.out.println();
+        } 
+    }
+    
+    public void printArray()
+    {
+        for (int i = 1; i <= size ; i++ )
+        {
+            System.out.print( i + " : " + Heap[i].str + " - " + Heap[i].dist);
+            System.out.println();
+        } 
+    }
+ 
+    public void minHeap()
+    {
+        for (int pos = (size / 2); pos >= 1 ; pos--)
+        {
+            minHeapify(pos);
+        }
+    }
+ 
+    public Path remove()
+    {
+        Path popped = Heap[FRONT];
+        Heap[FRONT] = Heap[size--]; 
+        minHeapify(FRONT);
+        return popped;
+    }
+ 
+}
+
+class Pair
+{
+    private final String str1;
+    private final String str2;
+
+    public Pair(String aStr1, String aStr2)
+    {
+        str1   = aStr1;
+        str2 = aStr2;
+    }
+
+    public String key()   { return str1; }
+    public String value() { return str2; }
+}
+
+public class Graph {
+
+	public static final int INFINITY = Integer.MAX_VALUE;
+    private Map<String,Vertex> vertexMap = new HashMap<String,Vertex>( );
+    private LinkedList<Pair> downEdges = new LinkedList<Pair>();
+
+
+    /**
+     * Dijkstra's shortest-path algorithm.
+     */
+    public void dijkstra( String startName )
+    {
+        clearAll( ); 
+
+        MinHeap pQueue = new MinHeap(20);
+        
+        Vertex start = vertexMap.get( startName );
+        if( start == null )
+        	throw new NoSuchElementException( "Start vertex not found" );
+        if(start.status != "UP")
+        	throw new NoSuchElementException("VERTEX IS DOWN");
+
+        start.dist = 0.0;
+	
+        pQueue.insert(new Path(start.name,start.dist));
+//        System.out.println("\n\n\n");
+//        Path temp;
+//        temp = pQueue.remove();        
+//        System.out.println("Min Element ->" + temp.dist +"\n---------------");
+        
+
+        while(pQueue.size() != 0)
+        {
+        	Vertex v = getVertex(pQueue.remove().str);
+
+        	System.out.println("V >>> " + v.name + " : " + v.dist);
+        	
+            for( Edge e : v.adj )
+            {
+                Vertex w = e.destName;
+                if(w.status!="UP")
+                	continue;
+                if(isEdgeDown(v.name,w.name))
+                	continue;
+                
+            	System.out.println("   W > " + w.name+" : " + w.dist);
+                double cvw = e.distance;
+                
+                if( cvw < 0 )
+                    throw new GraphException( "Graph has negative edges" );
+            	System.out.println("     "+ w.dist+" > " + v.dist + " " + cvw );
+                if( w.dist > v.dist + cvw )
+                {
+                	System.out.println("yes");
+                    w.dist = v.dist +cvw;
+                    w.prev = v;
+                    
+                    pQueue.insert(new Path(w.name, w.dist));
+                	System.out.println("   W > " + w.name+" : " + w.dist + " = updated");
+                	System.out.println("queue has elements: " + pQueue.size());
+                }            	
+            }		    
+        }
+    }
+
+    /**
+     * VERTEX DOWN
+     */
+    public void vertexDown(String str)
+    {
+    	Vertex v =vertexMap.get(str);
+    	v.status="DOWN";
+    }
+
+
+    /**
+     * VERTEX UP
+     */
+    public void vertexUp(String str)
+    {
+    	Vertex v =vertexMap.get(str);
+    	v.status="UP";
+    }
+
+    /**
+     * IS EDGE DOWN
+     */
+    public Boolean isEdgeDown(String source, String dest)
+    {
+    	Iterator<Pair> itr = downEdges.iterator();
+    	int down=0;
+    	
+//		System.out.println("##########################################" + downEdges.getFirst().key() + " " + downEdges.getFirst().value());
+//		System.out.println("##########################################" + source + " " + dest );
+    	if(downEdges.size()!=0)
+    	{
+    		//System.out.println("s");
+	    	while(itr.hasNext())
+	    	{
+	    		Pair temp = itr.next();
+//	    		System.out.println(temp.key() + "<<<<<" + temp.value());
+//	    		System.out.println(temp.key() + source + temp.value() + dest + "ifcond");
+	    		if(temp.key().equals(source) && temp.value().equals(dest))
+	    		{
+//	    			System.out.println("EDGE DOWN !! EDGE DOWN !! EDGE DOWN !! EDGE DOWN !! EDGE DOWN !! EDGE DOWN !! ");
+	    			down=1;
+	    			break;
+	    		}
+	    	}
+    	}
+
+    	if(down==0)
+    		return false;
+    	else
+    		return true;
+    }
+
+    /**
+     * EDGE DOWN
+     */
+    public void edgeDown(String source, String dest)
+    {
+//    	if(downEdges.key()==source)
+//    	downEdges = new Pair(source, dest);
+
+    	Iterator<Pair> itr = downEdges.iterator();
+    	int add=1;
+    	
+    	if(downEdges.size()!=0)
+    	{
+    		System.out.println("s");
+	    	while(itr.hasNext())
+	    	{
+	    		Pair temp = itr.next();
+	    		System.out.println(temp.key() + "<<<<<" + temp.value());
+	    		if(temp.key() == source && temp.value() == dest)
+	    		{
+	    			add=0;
+	    			System.out.println("hi");
+	    			break;
+	    		}
+	    	}
+    	}
+
+    	if(add==1)
+	    	downEdges.add(new Pair(source, dest));
+    	
+    	System.out.println("-----------------------------------------------------------------");
+    }
+
+    /**
+     * EDGE UP
+     */
+    public void edgeUp(String source, String dest)
+    { 	
+    	Iterator<Pair> itr = downEdges.iterator();
+    	int exist=0;
+		Pair temp = null;
+    	
+    	if(downEdges.size()!=0)
+    	{
+    		System.out.println("s");
+	    	while(itr.hasNext())
+	    	{
+	    		temp =  itr.next();
+	    		System.out.println(temp.key() + "<<<<<" + temp.value());
+	    		if(temp.key() == source && temp.value() == dest)
+	    		{
+	    			exist=1;
+	    			break;
+	    		}
+	    	}
+    	}
+
+    	if(exist==1)
+	    	downEdges.remove(temp);
+    	
+    	System.out.println("-----------------------------------------------------------------");
+    }
+
+    
+    /**
+     * Initializes the vertex output info prior to running
+     * any shortest path algorithm.
+     */
+    private void clearAll( )
+    {
+        for( Vertex v : vertexMap.values( ) )
+            v.reset( );
+    }
+
+    /**
+     * Initializes the vertex output info prior to running
+     * any shortest path algorithm.
+     */
+    private void print( )
+    {
+    	Boolean reachable;
+
+    	reachable = true; //////////////////////////////////////////////////////////////////////
+    	
+    	TreeSet<String> tree = new TreeSet<String>();
+    	
+    	for (String key : vertexMap.keySet()) {
+    		if(reachable)
+    			if(vertexMap.get(key).status != "UP")
+    			{
+    				System.out.println(vertexMap.get(key).name + " is down down down down down ");
+    				continue;
+    			}
+    		System.out.println(vertexMap.get(key).name + " added");
+    		tree.add(key);    		
+    	}
+
+    	Iterator<String> itr = tree.iterator();
+    	String adjN;
+    	while(itr.hasNext())
+    	{
+    		adjN = itr.next();
+    		System.out.println(adjN + "(" + vertexMap.get(adjN).status + ")" + "----------------");
+    		
+    			TreeSet<String> adj = new TreeSet<String>();
+    			HashMap<String, Double> temp = new HashMap<String, Double>();
+	        	for (Edge key : vertexMap.get(adjN).adj) {
+	        		if(reachable)
+	        		{
+	        			if(key.destName.status != "UP")
+	        			{
+	        				System.out.println(key.destName.name + " is down down down down down ");
+	        				continue;	        				
+	        			}
+	        			if(isEdgeDown(adjN, key.destName.name))
+	        				continue;
+	        		}
+	        		adj.add(key.destName.name);
+	        		temp.put(key.destName.name, key.distance);
+	        	}
+	        	
+	        	Iterator<String> adjItr = adj.iterator();
+	        	while(adjItr.hasNext())
+	        	{
+	        		String adjItrN = adjItr.next() ;
+	        		System.out.println("  " + adjItrN + "(" + vertexMap.get(adjN).status + ")" + " " + temp.get(adjItrN));
+	        	}
+	        	
+    	
+    	}
+    
+    }
+
+    
+    /**
+     * Process a request; return false if end of file.
+     */
+    public static boolean processRequest( Scanner in, Graph g )
+    {
+        try
+        {
+            //System.out.print( "Enter source node: " );
+            //String startName = in.nextLine( );
+
+            //System.out.print( "Enter destination node: " );
+            //String destName = in.nextLine( );
+        	String startName = "Woodward";
+        	String destName = "Education";
+            
+            
+//			g.addEdge("Woodward", "Duke", 5.6);
+//			g.addEdge("Duke", "Woodward", 5.6);
+			
+//        	g.vertexDown("Duke");
+//        	g.vertexUp("Duke");
+        	
+//        	g.edgeDown("Woodward", "Duke");
+        	System.out.println(g.downEdges.getFirst().value() + "%%%%%");
+
+        	g.dijkstra( startName );
+        	g.vertexDown("Duke");
+        	System.out.println("===========================================================");
+        	g.print();
+        	System.out.println("===========================================================");
+        	
+//        	System.out.println();
+//        	System.out.println(g.vertexMap.get("Belk").adj.size() + "<<<<<<<<<<<<<<<<<<<<<<<<<");
+//        	g.removeEdge("Belk", "Grigg");
+//        	g.print();
+//        	
+//        	System.out.println(g.vertexMap.get("Belk").adj.size()  + "!!!!!!!!!!!!!!!!!!!!!!!!");
+
+            g.printPath( destName );
+
+//            System.out.println(g.downEdges.size());
+//            g.edgeDown("Belk", "Woodward");
+//            System.out.println(g.downEdges.size());
+//
+//            g.edgeUp("Belk", "Woodward");
+//            System.out.println(g.downEdges.size());
+
+//          g.dijkstra( startName );
+//          g.printPath( destName );
+        }
+        catch( NoSuchElementException e )
+          { return false; }
+        catch( GraphException e )
+          { System.err.println( e ); }
+        return true;
+    }
+    
+
+
+    /**
+     * Recursive routine to print shortest path to dest
+     * after running shortest path algorithm. The path
+     * is known to exist.
+     */
+    private void printPath( Vertex dest )
+    {
+        if( dest.prev != null )
+        {
+            printPath( dest.prev );
+            System.out.print( " to " );
+        }
+        System.out.print( dest.name );
+    }
+    
+    /**
+     * Driver routine to handle unreachables and print total cost.
+     * It calls recursive routine to print shortest path to
+     * destNode after a shortest path algorithm has run.
+     */
+    public void printPath( String destName )
+    {
+        Vertex w = vertexMap.get( destName );
+        if( w == null )
+            throw new NoSuchElementException( "Destination vertex not found" );
+        else if( w.dist == INFINITY )
+            System.out.println( destName + " is unreachable" );
+        else
+        {
+            System.out.print( "(Cost is: " + w.dist + ") " );
+            printPath( w );
+            System.out.println( );
+        }
+    }
+
+    /**
+     * If vertexName is not present, add it to vertexMap.
+     * In either case, return the Vertex.
+     */
+    private Vertex getVertex( String vertexName )
+    {
+        Vertex v = vertexMap.get( vertexName );
+        if( v == null )
+        {
+            v = new Vertex( vertexName );
+            vertexMap.put( vertexName, v );
+        }
+        return v;
+    }
+
+    /**
+     * Add a new edge to the graph.
+     */
+    public void addEdge( String sourceName, String destName, double distance )
+    {
+        Vertex v = getVertex( sourceName );
+        Vertex w = getVertex( destName );
+        
+        Iterator<Edge> listIterator = v.adj.listIterator();
+        int i=0, update = 0;
+        while (listIterator.hasNext()) {
+        	
+        	Edge e = listIterator.next() ;
+        	
+        	if(w.name.equals(e.destName.name))
+        	{
+        		//System.out.println("Andar j che bc !" );
+        		v.adj.get(i).distance = distance;
+        		update=1;
+        	}
+        	i++;
+        }
+        if(update==0)
+        	v.adj.add( new Edge( w, distance ));
+    }
+
+    /**
+     * Remove an edge from the graph.
+     */
+    public void removeEdge( String sourceName, String destName)
+    {
+        Vertex v = getVertex( sourceName );
+        Vertex w = getVertex( destName );
+        
+        Iterator<Edge> listIterator = v.adj.listIterator();
+        int i=0;
+        while (listIterator.hasNext()) {
+        	
+        	Edge e = listIterator.next() ;
+        	
+        	if(w.name.equals(e.destName.name))
+        	{
+        		System.out.println("nikdi gayo chu!" );
+        		v.adj.remove(i);
+        	}
+        	i++;
+        }
+    }
+
+	public static void main( String [ ] args )
+    {
+        Graph g = new Graph( );
+        g.downEdges.add(new Pair(" "," "));
+        try
+        {
+            FileReader fin = new FileReader( args[0] );
+            Scanner graphFile = new Scanner( fin );
+
+            // Read the edges and insert
+            String line;
+            while( graphFile.hasNextLine( ) )
+            {
+                line = graphFile.nextLine( );
+                StringTokenizer st = new StringTokenizer( line );
+
+                try
+                {
+                    if( st.countTokens( ) != 3 )
+                    {
+                        System.err.println( "Skipping ill-formatted line " + line );
+                        continue;
+                    }
+                    String source  = st.nextToken( );
+                    String dest    = st.nextToken( );
+                    double distance 	   = Double.parseDouble(st.nextToken());
+                    
+                    g.addEdge( source, dest, distance);
+                    g.addEdge( dest, source, distance);
+                }
+                catch( NumberFormatException e )
+                  { System.err.println( "Skipping ill-formatted line " + line ); }
+             }
+             graphFile.close();
+         }
+         catch( IOException e )
+         { 
+        	 System.err.println( e );
+         }
+        
+         //System.out.println( "File read..." );
+         //System.out.println( g.vertexMap.size( ) + " vertices" );
+
+
+         Scanner in = new Scanner( System.in );
+         //while( processRequest( in, g ) )
+         //    ;
+         processRequest( in, g );
+    }
+}
