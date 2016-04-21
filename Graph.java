@@ -30,7 +30,7 @@ import java.util.StringTokenizer;
 /**
  * Graph Class initilizes and handles all the operations related to the Graph.
  */
-public class graph {
+public class Graph {
 
 	public static final int INFINITY = Integer.MAX_VALUE; //Initialize constant with infinite value
 	private Map<String, Vertex> vertexMap = new HashMap<String, Vertex>(); //Creates a HashMap which stores all the information of the vertices
